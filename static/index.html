@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creative Agent | Market Intelligence</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Space+Grotesk:wght@300;500;700&display=swap"
+        rel="stylesheet">
+    <!-- Markdown Parser -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- HTML2PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+
+<body>
+
+    <div class="background-globes">
+        <div class="globe globe-1"></div>
+        <div class="globe globe-2"></div>
+    </div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header>
+            <div class="logo">
+                <span class="icon">✨</span> Creative Agent
+            </div>
+            <button onclick="loadDemoData()" class="btn-secondary"
+                style="background:rgba(255,255,255,0.1); margin-left: auto;">Load Demo 🧪</button>
+        </header>
+
+        <!-- Main Grid -->
+        <main class="grid-layout">
+
+            <!-- Column 1: Market Intelligence -->
+            <section class="card glass-panel" id="market-panel">
+                <h2>1. Market Intelligence</h2>
+                <div class="upload-zone" id="csvDropZone">
+                    <div class="icon">📂</div>
+                    <p>Drag & Drop Competitor CSV</p>
+                    <input type="file" id="csvInput" accept=".csv" hidden>
+                </div>
+                <div id="market-status" class="status-indicator hidden">
+                    <div class="spinner"></div>
+                    <span>Synthesizing Winning DNA...</span>
+                </div>
+
+                <div id="winning-dna-result" class="dna-container hidden">
+                    <h3>Winning DNA Detected</h3>
+                    <div class="dna-item">
+                        <span class="label">Motivation</span>
+                        <span class="value" id="dna-motivation">...</span>
+                    </div>
+                    <div class="dna-item">
+                        <span class="label">Pacing</span>
+                        <span class="value" id="dna-pacing">...</span>
+                    </div>
+                    <div class="dna-item">
+                        <span class="label">Mechanic</span>
+                        <span class="value" id="dna-mechanic">...</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Column 2: Creative Benchmark -->
+            <section class="card glass-panel disabled" id="creative-panel">
+                <h2>2. Benchmark Creative</h2>
+
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab('file')">Upload File</button>
+                    <button class="tab" onclick="switchTab('url')">Video URL</button>
+                </div>
+
+                <div id="tab-file" class="tab-content active">
+                    <div class="upload-zone" id="videoDropZone">
+                        <div class="icon">🎬</div>
+                        <p>Drag & Drop Your Video (MP4)</p>
+                        <input type="file" id="videoInput" accept="video/mp4,video/quicktime" hidden>
+                    </div>
+                </div>
+
+                <div id="tab-url" class="tab-content">
+                    <input type="text" id="videoUrlInput" placeholder="https://example.com/ad.mp4" class="input-field">
+                    <button id="analyzeUrlBtn" class="btn-primary">Analyze URL</button>
+                </div>
+
+                <div id="creative-status" class="status-indicator hidden">
+                    <div class="spinner"></div>
+                    <span>Watching & Analyzing Video...</span>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Full Width: Strategic Report -->
+        <section class="card glass-panel hidden" id="report-panel">
+            <div class="report-header">
+                <h2>3. Strategic Analysis</h2>
+                <div class="header-actions">
+                    <button onclick="exportJSON()" class="btn-secondary">Export JSON ⬇️</button>
+                    <div class="score-badge" id="success-probability">-- Match</div>
+                </div>
+            </div>
+            <div id="report-content" class="markdown-body">
+                <!-- Report renders here -->
+            </div>
+        </section>
+
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+
+</html>

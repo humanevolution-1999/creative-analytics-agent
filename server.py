@@ -1,0 +1,206 @@
+import os
+import shutil
+import asyncio
+from typing import List
+from fastapi import FastAPI, File, UploadFile, BackgroundTasks, Request
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+import logging
+
+# Import our existing pipeline
+from src.pipeline import CreativeAnalyticsPipeline
+
+# Setup Logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("CreativeAgent")
+
+app = FastAPI(title="Creative Agent Brain")
+
+# Enable CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Global State (In-memory for simplicity)
+STATE = {
+    "market_data_path": None,
+    "winning_dna": None,
+    "latest_analysis": None,
+    "is_processing": False
+}
+
+# Startup Check for API Key
+API_KEY = os.environ.get("GEMINI_API_KEY")
+if not API_KEY:
+    logger.error("GEMINI_API_KEY environment variable not set.")
+    # In production, we might raise an error, but for now we'll just log it 
+    # and fail gracefully inside endpoints if needed.
+
+# Mount static files for the frontend
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/")
+def read_root():
+    return FileResponse("static/index.html")
+
+@app.post("/upload-market-data")
+async def upload_market_data(file: UploadFile = File(...)):
+    """
+    Step 1: Upload and parse the Competitor CSV.
+    """
+    try:
+        file_location = f"temp_{file.filename}"
+        with open(file_location, "wb+") as file_object:
+            shutil.copyfileobj(file.file, file_object)
+        
+        STATE['market_data_path'] = file_location
+        STATE['winning_dna'] = None # Reset previous DNA
+        
+        return JSONResponse(content={
+            "status": "success", 
+            "message": f"Market Data '{file.filename}' received.",
+            "file_path": file_location
+        })
+    except Exception as e:
+        return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
+
+from fastapi import Request
+
+@app.post("/analyze-market")
+async def analyze_market(request: Request):
+    """
+    Step 2: Trigger Winning DNA Synthesis.
+    """
+    if not STATE['market_data_path']:
+        return JSONResponse(content={"status": "error", "message": "No market data uploaded."}, status_code=400)
+    if not API_KEY:
+        return JSONResponse(content={"status": "error", "message": "Server API Key not configured."}, status_code=500)
+    
+    try:
+        STATE['is_processing'] = True
+        logger.info("Starting Market Analysis...")
+        
+        # Initialize Pipeline
+        pipeline = CreativeAnalyticsPipeline(api_key=API_KEY)
+        
+        # Run Phase 1 & 2
+        winning_dna = pipeline.get_winning_dna(STATE['market_data_path'])
+        
+        STATE['winning_dna'] = winning_dna
+        STATE['is_processing'] = False
+        
+        return JSONResponse(content={
+            "status": "success",
+            "winning_dna": winning_dna
+        })
+    except Exception as e:
+        STATE['is_processing'] = False
+        return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
+
+class AnalyzeRequest(BaseModel):
+    video_url: str = None  # Removed api_key
+
+@app.post("/analyze-creative-file")
+async def analyze_creative_file(
+    file: UploadFile = File(...)
+):
+    """
+    Step 3: Upload User Creative and Benchmark it.
+    """
+    if not STATE['winning_dna']:
+        return JSONResponse(content={"status": "error", "message": "Winning DNA not ready. Analyze market first."}, status_code=400)
+    if not API_KEY:
+        return JSONResponse(content={"status": "error", "message": "Server API Key not configured."}, status_code=500)
+    
+    try:
+        # Save uploaded video
+        file_location = f"temp_creative_{file.filename}"
+        with open(file_location, "wb+") as file_object:
+            shutil.copyfileobj(file.file, file_object)
+        
+        pipeline = CreativeAnalyticsPipeline(api_key=API_KEY)
+        
+        # We manually inject the cached winning DNA so we don't re-run Step 1
+        # But our pipeline currently re-runs everything in `analyze_creative`.
+        # Optimization: We should update pipeline to accept pre-calculated DNA.
+        # For now, we'll re-run or better: expose a method in pipeline to use existing DNA.
+        
+        # Let's perform the analysis part manually using the pipeline's internal methods
+        # 1. Build Prompt
+        system_prompt = pipeline.build_dynamic_prompt(STATE['winning_dna'])
+        
+        # 2. Analyze Video (Uploads to Gemini)
+        logger.info(f"Analyzing creative: {file_location}")
+        my_ad_analysis = pipeline._analyze_video(file_location)
+        
+        # 3. Generate Report
+        context = f"""
+        MARKET BENCHMARK (WINNING DNA):
+        {STATE['winning_dna']}
+        
+        USER CREATIVE ANALYSIS:
+        {my_ad_analysis}
+        """
+        
+        final_report = pipeline._generate_content(system_prompt, context)
+        
+        # Cleanup
+        os.remove(file_location)
+        
+        return JSONResponse(content={
+            "status": "success",
+            "report": final_report,
+            "creative_analysis": my_ad_analysis
+        })
+
+    except Exception as e:
+        return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
+
+@app.post("/analyze-creative-url")
+async def analyze_creative_url(request: AnalyzeRequest):
+    """
+    Step 3 (Alternate): Analyze from URL.
+    """
+    if not STATE['winning_dna']:
+        return JSONResponse(content={"status": "error", "message": "Winning DNA not ready. Analyze market first."}, status_code=400)
+    if not API_KEY:
+        return JSONResponse(content={"status": "error", "message": "Server API Key not configured."}, status_code=500)
+
+    try:
+        pipeline = CreativeAnalyticsPipeline(api_key=API_KEY)
+        
+        # 1. Build Prompt
+        system_prompt = pipeline.build_dynamic_prompt(STATE['winning_dna'])
+        
+        # 2. Analyze Video (Downloads URL -> Temp -> Gemini)
+        logger.info(f"Analyzing creative URL: {request.video_url}")
+        my_ad_analysis = pipeline._analyze_video(request.video_url)
+        
+        if "error" in my_ad_analysis:
+             return JSONResponse(content={"status": "error", "message": my_ad_analysis['error']}, status_code=400)
+
+        # 3. Generate Report
+        context = f"""
+        MARKET BENCHMARK (WINNING DNA):
+        {STATE['winning_dna']}
+        
+        USER CREATIVE ANALYSIS:
+        {my_ad_analysis}
+        """
+        
+        final_report = pipeline._generate_content(system_prompt, context)
+        
+        return JSONResponse(content={
+            "status": "success",
+            "report": final_report,
+            "creative_analysis": my_ad_analysis
+        })
+
+    except Exception as e:
+        return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
