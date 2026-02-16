@@ -1,4 +1,6 @@
-const API_URL = "http://localhost:8000";
+// Use relative path for production (Render) support
+// If running locally, this works because we serve static files from the same origin.
+const API_URL = "";
 
 // --- State ---
 // API Key is now handled on server side
@@ -116,6 +118,9 @@ function displayWinningDna(dna) {
 async function handleCreativeUpload(file) {
     if (!file) return;
 
+    // Prevent double submission
+    if (document.getElementById("creative-status").classList.contains("processing")) return;
+
     startCreativeAnalysis();
 
     const formData = new FormData();
@@ -131,6 +136,7 @@ async function handleCreativeUpload(file) {
     } catch (error) {
         console.error(error);
         alert("Analysis error");
+        stopCreativeAnalysis(); // Re-enable inputs
     }
 }
 
@@ -154,11 +160,26 @@ async function handleCreativeUrl(url) {
 function startCreativeAnalysis() {
     const status = document.getElementById("creative-status");
     status.classList.remove("hidden");
+    status.classList.add("processing"); // Flag for double-submission check
     document.getElementById("report-panel").classList.add("hidden");
+
+    // Disable inputs
+    document.getElementById("videoInput").disabled = true;
+    document.querySelector(".tab.active").classList.add("disabled");
+}
+
+function stopCreativeAnalysis() {
+    const status = document.getElementById("creative-status");
+    status.classList.add("hidden");
+    status.classList.remove("processing");
+
+    // Enable inputs
+    document.getElementById("videoInput").disabled = false;
+    document.querySelector(".tab.active").classList.remove("disabled");
 }
 
 function handleAnalysisResult(data) {
-    document.getElementById("creative-status").classList.add("hidden");
+    stopCreativeAnalysis();
 
     if (data.status === "success") {
         // Store for Export
