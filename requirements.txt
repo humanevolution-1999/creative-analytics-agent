@@ -8,3 +8,4 @@ pandas>=2.2.0
 numpy>=1.26.0
 # Use headless OpenCV for server environments (no GUI dependencies)
 opencv-python-headless>=4.9.0
+aiofiles>=23.2.0

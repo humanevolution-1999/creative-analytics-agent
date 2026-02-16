@@ -106,6 +106,8 @@ async def analyze_market(request: Request):
 class AnalyzeRequest(BaseModel):
     video_url: str = None  # Removed api_key
 
+import aiofiles
+
 @app.post("/analyze-creative-file")
 async def analyze_creative_file(
     file: UploadFile = File(...)
@@ -119,10 +121,13 @@ async def analyze_creative_file(
         return JSONResponse(content={"status": "error", "message": "Server API Key not configured."}, status_code=500)
     
     try:
-        # Save uploaded video
+        # Save uploaded video asynchronously
         file_location = f"temp_creative_{file.filename}"
-        with open(file_location, "wb+") as file_object:
-            shutil.copyfileobj(file.file, file_object)
+        
+        # USE ASYNC WRITE to avoid blocking logic
+        async with aiofiles.open(file_location, 'wb') as out_file:
+            while content := await file.read(1024 * 1024):  # Read in 1MB chunks
+                await out_file.write(content)
         
         pipeline = CreativeAnalyticsPipeline(api_key=API_KEY)
         
@@ -151,7 +156,8 @@ async def analyze_creative_file(
         final_report = pipeline._generate_content(system_prompt, context)
         
         # Cleanup
-        os.remove(file_location)
+        if os.path.exists(file_location):
+            os.remove(file_location)
         
         return JSONResponse(content={
             "status": "success",
@@ -160,6 +166,7 @@ async def analyze_creative_file(
         })
 
     except Exception as e:
+        logger.error(f"Error in analyze_creative_file: {str(e)}")
         return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
 
 @app.post("/analyze-creative-url")
