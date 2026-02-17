@@ -39,7 +39,7 @@ class CreativeAnalyticsPipeline:
             return response.text
         except Exception as e:
             print(f"Error calling Gemini API: {e}")
-            return "{}"
+            raise Exception(f"Gemini API Error: {str(e)}")
 
     def _download_video(self, url):
         """
@@ -191,11 +191,13 @@ class CreativeAnalyticsPipeline:
                     """)
 
         except Exception as e:
-            print(f"Error reading CSV: {e}")
-            return {}
+            raise Exception(f"Error reading/parsing CSV: {str(e)}")
 
         # Combine all analyses into one massive context block
         full_market_context = "\n".join(analyzed_data)
+        
+        if not analyzed_data:
+             raise Exception("No valid rows found in CSV. Check column headers (Advertiser App, Impression Share).")
 
         print("\n--- Phase 1b: Synthesizing 'Winning DNA' from Aggregate Analysis ---")
         response = self._generate_content(
@@ -207,8 +209,7 @@ class CreativeAnalyticsPipeline:
             cleaned_response = response.replace('```json', '').replace('```', '')
             return json.loads(cleaned_response)
         except json.JSONDecodeError:
-            print("Error decoding JSON from LLM")
-            return {}
+            raise Exception(f"LLM returned invalid JSON: {response[:100]}...")
 
     def build_dynamic_prompt(self, winning_dna):
         """
