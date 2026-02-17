@@ -115,6 +115,9 @@ async def analyze_market(request: Request):
         # Run Phase 1 & 2
         winning_dna = pipeline.get_winning_dna(STATE['market_data_path'])
         
+        if not winning_dna:
+            raise Exception("Winning DNA synthesis failed. Please check your CSV file format.")
+
         STATE['winning_dna'] = winning_dna
         STATE['is_processing'] = False
         

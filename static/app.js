@@ -146,9 +146,9 @@ async function handleCsvUpload(file) {
 
 function displayWinningDna(dna) {
     document.getElementById("winning-dna-result").classList.remove("hidden");
-    document.getElementById("dna-motivation").innerText = dna.dominant_motivation;
-    document.getElementById("dna-pacing").innerText = dna.avg_pacing;
-    document.getElementById("dna-mechanic").innerText = dna.key_mechanic;
+    document.getElementById("dna-motivation").innerText = dna.dominant_motivation || "N/A";
+    document.getElementById("dna-pacing").innerText = dna.avg_pacing || "N/A";
+    document.getElementById("dna-mechanic").innerText = dna.key_mechanic || "N/A";
 }
 
 async function handleCreativeUpload(file) {
