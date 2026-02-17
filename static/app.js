@@ -3,8 +3,39 @@
 const API_URL = "";
 
 // --- State ---
-// API Key is now handled on server side
 let currentAnalysisData = null; // Store analysis result for JSON export
+
+// --- Initialization ---
+document.addEventListener("DOMContentLoaded", () => {
+    checkExistingBenchmark();
+});
+
+async function checkExistingBenchmark() {
+    try {
+        const res = await fetch(`${API_URL}/winning-dna`);
+        const data = await res.json();
+
+        if (data.status === "success" && data.winning_dna) {
+            console.log("Found persisted benchmark.");
+            displayWinningDna(data.winning_dna);
+
+            // UI State: Active Benchmark
+            document.getElementById("market-upload-container").classList.add("hidden");
+            document.getElementById("refresh-benchmark-btn").classList.remove("hidden");
+            document.getElementById("creative-panel").classList.remove("disabled");
+        }
+    } catch (e) {
+        console.warn("Could not check benchmark status", e);
+    }
+}
+
+function toggleMarketUpload() {
+    const container = document.getElementById("market-upload-container");
+    container.classList.toggle("hidden");
+}
+window.toggleMarketUpload = toggleMarketUpload;
+
+// function resetMarketData removed - using non-destructive update flow
 
 // --- Event Listeners ---
 
@@ -92,6 +123,11 @@ async function handleCsvUpload(file) {
 
             if (analyzeData.status === "success") {
                 displayWinningDna(analyzeData.winning_dna);
+
+                // UI Update: Hide upload, Show Badge + Refresh
+                document.getElementById("market-upload-container").classList.add("hidden");
+                document.getElementById("refresh-benchmark-btn").classList.remove("hidden");
+
                 // Unlock next step
                 document.getElementById("creative-panel").classList.remove("disabled");
             } else {

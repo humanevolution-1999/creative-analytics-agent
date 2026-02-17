@@ -1,6 +1,7 @@
 import os
 import shutil
 import asyncio
+import json
 from typing import List
 from fastapi import FastAPI, File, UploadFile, BackgroundTasks, Request
 from fastapi.staticfiles import StaticFiles
@@ -27,13 +28,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global State (In-memory for simplicity)
+# Global State (In-memory for simplicity + JSON persistence)
 STATE = {
     "market_data_path": None,
     "winning_dna": None,
     "latest_analysis": None,
     "is_processing": False
 }
+
+WINNING_DNA_FILE = "winning_dna.json"
+
+# Load saved DNA on startup
+if os.path.exists(WINNING_DNA_FILE):
+    try:
+        with open(WINNING_DNA_FILE, "r") as f:
+            STATE['winning_dna'] = json.load(f)
+        logger.info("Loaded persisted Winning DNA.")
+    except Exception as e:
+        logger.error(f"Failed to load winning_dna.json: {e}")
 
 # Startup Check for API Key
 API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -49,6 +61,16 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 def read_root():
     return FileResponse("static/index.html")
 
+@app.get("/winning-dna")
+def get_winning_dna_status():
+    """
+    Check if we have an existing benchmark.
+    """
+    if STATE['winning_dna']:
+        return JSONResponse(content={"status": "success", "winning_dna": STATE['winning_dna']})
+    else:
+        return JSONResponse(content={"status": "not_found", "message": "No benchmark data found."})
+
 @app.post("/upload-market-data")
 async def upload_market_data(file: UploadFile = File(...)):
     """
@@ -60,11 +82,12 @@ async def upload_market_data(file: UploadFile = File(...)):
             shutil.copyfileobj(file.file, file_object)
         
         STATE['market_data_path'] = file_location
-        STATE['winning_dna'] = None # Reset previous DNA
+        # We DO NOT reset winning_dna here yet. We wait for explicit "Analyze" action.
+        # This allows users to re-upload CSV without losing old benchmark immediately if they cancel.
         
         return JSONResponse(content={
             "status": "success", 
-            "message": f"Market Data '{file.filename}' received.",
+            "message": f"Market Data '{file.filename}' received. Ready to analyze.",
             "file_path": file_location
         })
     except Exception as e:
@@ -95,6 +118,13 @@ async def analyze_market(request: Request):
         STATE['winning_dna'] = winning_dna
         STATE['is_processing'] = False
         
+        # Persist to disk
+        try:
+            with open(WINNING_DNA_FILE, "w") as f:
+                json.dump(winning_dna, f, indent=4)
+        except Exception as e:
+            logger.error(f"Failed to save winning_dna.json: {e}")
+        
         return JSONResponse(content={
             "status": "success",
             "winning_dna": winning_dna
@@ -106,6 +136,7 @@ async def analyze_market(request: Request):
 class AnalyzeRequest(BaseModel):
     video_url: str = None  # Removed api_key
 
+from fastapi.concurrency import run_in_threadpool
 import aiofiles
 
 @app.post("/analyze-creative-file")
@@ -131,20 +162,17 @@ async def analyze_creative_file(
         
         pipeline = CreativeAnalyticsPipeline(api_key=API_KEY)
         
-        # We manually inject the cached winning DNA so we don't re-run Step 1
-        # But our pipeline currently re-runs everything in `analyze_creative`.
-        # Optimization: We should update pipeline to accept pre-calculated DNA.
-        # For now, we'll re-run or better: expose a method in pipeline to use existing DNA.
-        
-        # Let's perform the analysis part manually using the pipeline's internal methods
-        # 1. Build Prompt
+        # 1. Build Prompt (Fast, CPU bound, can stay or be threaded)
         system_prompt = pipeline.build_dynamic_prompt(STATE['winning_dna'])
         
-        # 2. Analyze Video (Uploads to Gemini)
+        # 2. Analyze Video (Blocking I/O - Run in Threadpool)
+        print("\n--- Phase 3: Analyzing Benchmark Creative ---")
         logger.info(f"Analyzing creative: {file_location}")
-        my_ad_analysis = pipeline._analyze_video(file_location)
         
-        # 3. Generate Report
+        # Offload blocking call to threadpool
+        my_ad_analysis = await run_in_threadpool(pipeline._analyze_video, file_location)
+        
+        # 3. Generate Report (Blocking I/O - Run in Threadpool)
         context = f"""
         MARKET BENCHMARK (WINNING DNA):
         {STATE['winning_dna']}
@@ -153,7 +181,7 @@ async def analyze_creative_file(
         {my_ad_analysis}
         """
         
-        final_report = pipeline._generate_content(system_prompt, context)
+        final_report = await run_in_threadpool(pipeline._generate_content, system_prompt, context)
         
         # Cleanup
         if os.path.exists(file_location):

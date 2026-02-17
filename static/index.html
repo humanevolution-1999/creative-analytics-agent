@@ -40,30 +40,44 @@
 
             <!-- Column 1: Market Intelligence -->
             <section class="card glass-panel" id="market-panel">
-                <h2>1. Market Intelligence</h2>
-                <div class="upload-zone" id="csvDropZone">
-                    <div class="icon">📂</div>
-                    <p>Drag & Drop Competitor CSV</p>
-                    <input type="file" id="csvInput" accept=".csv" hidden>
-                </div>
-                <div id="market-status" class="status-indicator hidden">
-                    <div class="spinner"></div>
-                    <span>Synthesizing Winning DNA...</span>
+                <div class="flex justify-between items-center mb-6">
+                    <h2>1. Market Intelligence</h2>
+
+                    <!-- Update Button (Visible when data exists) -->
+                    <button id="refresh-benchmark-btn" onclick="toggleMarketUpload()" class="hidden btn-secondary">
+                        🔄 Update Benchmark
+                    </button>
                 </div>
 
-                <div id="winning-dna-result" class="dna-container hidden">
-                    <h3>Winning DNA Detected</h3>
-                    <div class="dna-item">
-                        <span class="label">Motivation</span>
-                        <span class="value" id="dna-motivation">...</span>
+                <!-- Empty State / Upload Mode (Collapsible) -->
+                <div id="market-upload-container" class="transition-all duration-300 ease-in-out mb-6">
+                    <div class="upload-zone mb-6" id="csvDropZone">
+                        <div class="icon">📂</div>
+                        <p>Drag & Drop Competitor CSV</p>
+                        <div class="text-xs text-gray-500 mt-2">Analyzes top 10 creatives to extract patterns</div>
+                        <input type="file" id="csvInput" accept=".csv" hidden>
                     </div>
-                    <div class="dna-item">
-                        <span class="label">Pacing</span>
-                        <span class="value" id="dna-pacing">...</span>
+                    <div id="market-status" class="status-indicator hidden mb-6">
+                        <div class="spinner"></div>
+                        <span>Synthesizing Winning DNA...</span>
                     </div>
-                    <div class="dna-item">
-                        <span class="label">Mechanic</span>
-                        <span class="value" id="dna-mechanic">...</span>
+                </div>
+
+                <!-- Results Panel (Winning DNA) - Always visible if data exists -->
+                <div id="winning-dna-result" class="dna-container hidden border-t border-white/5 pt-6 animate-fade-in">
+                    <div class="grid grid-cols-3 gap-4 text-center">
+                        <div class="dna-item">
+                            <span class="label block text-xs text-gray-500 uppercase mb-1">Motivation</span>
+                            <span class="value text-sm text-purple-300 font-medium" id="dna-motivation">...</span>
+                        </div>
+                        <div class="dna-item border-l border-white/5">
+                            <span class="label block text-xs text-gray-500 uppercase mb-1">Pacing</span>
+                            <span class="value text-sm text-pink-300 font-medium" id="dna-pacing">...</span>
+                        </div>
+                        <div class="dna-item border-l border-white/5">
+                            <span class="label block text-xs text-gray-500 uppercase mb-1">Mechanic</span>
+                            <span class="value text-sm text-blue-300 font-medium" id="dna-mechanic">...</span>
+                        </div>
                     </div>
                 </div>
             </section>

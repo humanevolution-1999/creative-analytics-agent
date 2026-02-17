@@ -11,3 +11,5 @@ Creative_Strategy_Analysis.json
 *.mp4
 temp_creative_media*
 test_aiofiles.py
+test_api.py
+winning_dna.json
