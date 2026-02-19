@@ -17,5 +17,6 @@ COPY . .
 EXPOSE 8080
 
 # Run the server
-# Host 0.0.0.0 is crucial for Docker
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8080"]
+# Run the server
+# Host 0.0.0.0 is crucial for Docker, Port must match $PORT on Render
+CMD sh -c "uvicorn server:app --host 0.0.0.0 --port ${PORT:-8080}"
